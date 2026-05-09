@@ -4,6 +4,8 @@ A hands-on educational workshop covering GATK best-practice variant calling for 
 
 All data is from GATK's public tutorial bundles — no institutional data, no large downloads (~100 MB total).
 
+**[→ View pipeline outputs and figures (DEMO.md)](DEMO.md)**
+
 ---
 
 ## What this pipeline does

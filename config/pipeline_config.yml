@@ -1,0 +1,144 @@
+# pipeline_config.yml
+# Central configuration for the variant calling pipeline.
+# Paths are relative to the project root unless marked as absolute.
+# Adjust these if you change the data layout.
+
+# ─── Paths ────────────────────────────────────────────────────────────────────
+
+paths:
+  # Root directories
+  data_dir: "data"
+  results_dir: "results"
+  logs_dir: "logs"
+
+  # ── Somatic ──
+  somatic:
+    bam_tumor:  "data/bams/somatic/tumor.bam"
+    bam_normal: "data/bams/somatic/normal.bam"
+    results:    "results/somatic"
+
+  # ── Germline ──
+  germline:
+    bam_mother: "data/bams/germline/mother.bam"
+    bam_father: "data/bams/germline/father.bam"
+    bam_son:    "data/bams/germline/son.bam"
+    results:    "results/germline"
+
+  # ── Reference (chr17 + chr20 subsets) ──
+  reference:
+    fasta_chr17: "data/ref/Homo_sapiens_assembly38.chr17.fasta"
+    fasta_chr20: "data/ref/Homo_sapiens_assembly38.chr20.fasta"
+    dict_chr17:  "data/ref/Homo_sapiens_assembly38.chr17.dict"
+    dict_chr20:  "data/ref/Homo_sapiens_assembly38.chr20.dict"
+
+  # ── GATK resources for somatic ──
+  somatic_resources:
+    gnomad_vcf:       "data/resources/af-only-gnomad.chr17.vcf.gz"
+    panel_of_normals: "data/resources/1000g_pon.chr17.vcf.gz"
+    intervals:        "data/resources/chr17_20M-60M.interval_list"
+    funcotator_db:    "data/resources/funcotator_dataSources.v1.7.20200521s"
+
+  # ── GATK resources for germline ──
+  germline_resources:
+    dbsnp:   "data/resources/Homo_sapiens_assembly38.dbsnp138.chr20.vcf.gz"
+    mills:   "data/resources/Mills_and_1000G_gold_standard.indels.hg38.chr20.vcf.gz"
+    hapmap:  "data/resources/hapmap_3.3.hg38.chr20.vcf.gz"
+    omni:    "data/resources/1000G_omni2.5.hg38.chr20.vcf.gz"
+    onekg:   "data/resources/1000G_phase1.snps.high_confidence.hg38.chr20.vcf.gz"
+    intervals: "data/resources/chr20.interval_list"
+
+# ─── Sample names ─────────────────────────────────────────────────────────────
+
+samples:
+  somatic:
+    tumor_name:  "HCC1143"          # must match SM tag in BAM header
+    normal_name: "HCC1143_NORMAL"
+  germline:
+    mother: "NA12878"
+    father: "NA12891"
+    son:    "NA12892"
+
+# ─── GATK parameters ──────────────────────────────────────────────────────────
+
+gatk:
+  java_opts: "-Xmx8g -XX:+UseParallelGC"   # 8 GB heap — adjust for your machine
+
+  mark_duplicates:
+    optical_duplicate_pixel_distance: 2500  # 100 for HiSeq 2500, 2500 for NovaSeq patterned flowcells
+
+  mutect2:
+    max_mnp_distance: 1                    # merge adjacent SNPs into MNPs
+    mitochondria_mode: false
+
+  haplotypecaller:
+    emit_ref_confidence: "GVCF"            # required for joint genotyping workflow
+    sample_ploidy: 2
+    stand_call_conf: 30
+
+  filter_mutect_calls:
+    min_allele_fraction: 0.05              # minimum tumor VAF to report
+
+  # Hard filters for germline (replaces VQSR on small callsets)
+  hard_filters:
+    snp:
+      qd:   2.0     # QualByDepth — low QD = quality not supported by depth
+      mq:   40.0    # MappingQuality — low MQ = reads mapped poorly
+      fs:   60.0    # FisherStrand — high FS = strand bias
+      sor:  3.0     # StrandOddsRatio — alternative strand bias test
+      mqrs: -12.5   # MappingQualityRankSumTest
+      rprs: -8.0    # ReadPosRankSumTest
+      qual: 30      # absolute QUAL score floor
+      dp:   10      # minimum depth
+    indel:
+      qd:   2.0
+      fs:   200.0
+      sor:  10.0
+      rprs: -20.0
+      qual: 30
+      dp:   10
+
+# ─── Annotation ───────────────────────────────────────────────────────────────
+
+annotation:
+  vep_rest_url: "https://grch37.rest.ensembl.org"
+  vep_genome:   "GRCh37"
+  gnomad_api:   "https://gnomad.broadinstitute.org/api"
+  clinvar_api:  "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
+  cosmic_vcf:   "data/resources/CosmicCodingMuts.chr17.vcf.gz"  # requires free registration
+
+  vep_fields:
+    - "Consequence"
+    - "SYMBOL"
+    - "Gene"
+    - "HGVSc"
+    - "HGVSp"
+    - "ClinVar_CLNSIG"
+    - "ClinVar_CLNDN"
+    - "gnomAD_AF"
+    - "COSMIC_ID"
+    - "COSMIC_CNT"
+    - "SIFT"
+    - "PolyPhen"
+    - "MAX_AF"
+
+# ─── Agent ────────────────────────────────────────────────────────────────────
+
+agent:
+  model: "claude-opus-4-5"
+  max_tokens: 512
+  temperature: 0.2         # low temperature for clinical reproducibility
+  rate_limit_seconds: 1.0  # pause between API calls to avoid throttling
+  max_variants_per_run: 50 # cap for demo runs
+
+  # Tier thresholds for rule-based pre-classification (before LLM)
+  thresholds:
+    gnomad_rare_af:       0.001   # < 0.1% = rare
+    gnomad_very_rare_af:  0.0001  # < 0.01% = very rare
+    somatic_vaf_clonal:   0.20    # VAF > 20% suggests clonal origin
+    cosmic_driver_count:  50      # > 50 COSMIC tumors = strong evidence
+
+# ─── Runtime ──────────────────────────────────────────────────────────────────
+
+runtime:
+  threads: 4               # number of CPU threads for GATK steps
+  mem_gb:  8               # heap memory in GB (must match gatk.java_opts)

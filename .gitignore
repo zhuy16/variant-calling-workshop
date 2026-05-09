@@ -1,0 +1,66 @@
+## Data — never commit raw sequencing or reference files
+data/bams/
+data/ref/
+data/resources/
+*.bam
+*.bai
+*.cram
+*.crai
+*.vcf.gz
+*.vcf.gz.tbi
+*.vcf
+*.g.vcf.gz
+*.g.vcf.gz.tbi
+*.table
+*.tar.gz
+
+## Keep the download script, exclude downloaded content
+!data/download_tutorial_data.sh
+
+## Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv
+env/
+venv/
+*.egg-info/
+dist/
+build/
+
+## API keys — never commit
+# ── Environment / secrets ─────────────────────────────────────────────────────
+.env
+.env.yml
+secrets.yaml
+
+## Jupyter checkpoints
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/
+
+## macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+## IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+## GATK temp files
+*.idx
+*.dict
+*.metrics
+
+## Annotation cache (resumable checkpoints, not needed in repo)
+results/**/.annotation_cache/
+
+## Logs (too noisy for repo)
+logs/
+
+## Keep key results outputs (TSV, JSON, PNG) — these are portfolio artifacts
+!results/**/*.tsv
+!results/**/*.json
+!results/**/*.png
